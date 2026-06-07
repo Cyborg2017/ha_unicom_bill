@@ -116,13 +116,13 @@ BASIC_SENSOR_DESCRIPTIONS: list[UnicomSensorEntityDescription] = [
         native_unit_of_measurement="CNY",
         icon="mdi:wallet",
         value_fn=lambda data: (
-            float(data.get("balance_detail", {}).get("canusefeecustNew", 
-                   data.get("balance_detail", {}).get("canusefeecust", 0)))
+            float(data.get("balance_detail", {}).get("curntbalancecust", 0))
             if data.get("balance_detail")
             else None
         ),
         attributes_fn=lambda data: {
-            "current_balance": data.get("balance_detail", {}).get("curntbalancecust"),
+            "available_balance": data.get("balance_detail", {}).get("canusefeecustNew", 
+                                 data.get("balance_detail", {}).get("canusefeecust")),
             "real_time_fee": data.get("balance_detail", {}).get("totalrealfee", 
                          data.get("balance_detail", {}).get("realfeecustnew")),
             "total_owed": data.get("balance_detail", {}).get("allbowefeecust"),
@@ -267,7 +267,8 @@ DETAILED_SENSOR_DESCRIPTIONS: list[UnicomSensorEntityDescription] = [
         native_unit_of_measurement="CNY",
         icon="mdi:cash-multiple",
         value_fn=lambda data: (
-            float(data.get("balance_detail", {}).get("curntbalancecust", 0))
+            float(data.get("balance_detail", {}).get("canusefeecustNew", 
+                   data.get("balance_detail", {}).get("canusefeecust", 0)))
             if data.get("balance_detail")
             else None
         ),
