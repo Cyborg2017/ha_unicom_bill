@@ -38,6 +38,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         micro_hall_access_token=entry.data.get("manual_microhall_cookie", ""),
     )
 
+    # Try to auto-detect phone number from API if not configured
+    phone_number = entry.data.get("phone_number", "")
+    if not phone_number:
+        try:
+            _LOGGER.info("Attempting to auto-detect phone number from API...")
+            detected_phone = await api.get_phone_number()
+            if detected_phone:
+                _LOGGER.info("Auto-detected phone number: %s", detected_phone)
+                # Update config entry with detected phone number
+                new_data = {**entry.data, "phone_number": detected_phone}
+                hass.config_entries.async_update_entry(entry, data=new_data)
+                phone_number = detected_phone
+            else:
+                _LOGGER.info("Could not auto-detect phone number from API")
+        except Exception as err:
+            _LOGGER.warning("Failed to auto-detect phone number: %s", err)
+
     # Create coordinator
     refresh_interval = entry.data.get("refresh_interval", 15)
     coordinator = UnicomBillCoordinator(
@@ -54,7 +71,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_config_entry_first_refresh()
 
     # Forward to sensor platform
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    )
 
     return True
 

@@ -12,6 +12,7 @@ from aiohttp import ClientSession
 from .const import (
     API_BALANCE_DETAIL,
     API_GET_TICKET,
+    API_QUERY_GOODS_LIST,
     API_SERVICE_ENTRANCE,
     API_SSPBIGBALL,
     API_USAGE_DETAIL,
@@ -154,6 +155,76 @@ class UnicomAPI:
         except Exception as err:
             _LOGGER.error("Failed to get overview: %s", err)
             raise UnicomAPIError(f"Overview API error: {err}") from err
+
+    async def get_phone_number(self) -> str | None:
+        """Extract complete phone number from API response.
+        
+        Tries queryGoodsList API first (returns complete number),
+        falls back to usage detail API if needed.
+        """
+        # Method 1: Try queryGoodsList API (returns complete phone number)
+        try:
+            payload = {"openid": self.openid, "channel": "wxmini"}
+            async with self.session.post(
+                API_QUERY_GOODS_LIST, json=payload, headers=HEADERS_JSON
+            ) as resp:
+                text = await resp.text()
+                data = json.loads(text)
+                
+                if data.get("code") == "0000" and data.get("data", {}).get("res"):
+                    res_list = data["data"]["res"]
+                    for item in res_list:
+                        main_number = item.get("mainNumber", "")
+                        if main_number and len(main_number) == 11 and main_number.startswith("1"):
+                            _LOGGER.info("Found complete phone number from queryGoodsList: %s", main_number)
+                            return main_number
+        except Exception as err:
+            _LOGGER.warning("queryGoodsList API failed: %s", err)
+        
+        # Method 2: Fallback to usage detail API (may return masked number)
+        try:
+            effective_ticket = self._manual_usage_ticket or self._auto_ticket
+            effective_phone = self._manual_usage_ticket_phone or self._auto_ticket_phone
+            
+            form_data = {
+                "duanlianjieabc": "",
+                "channelCode": "",
+                "serviceType": "",
+                "saleChannel": "",
+                "externalSources": "",
+                "contactCode": "",
+                "ticket": effective_ticket,
+                "ticketPhone": effective_phone,
+                "ticketChannel": "XCXYLCXYY",
+                "language": "chinese",
+            }
+            
+            headers = HEADERS_FORM.copy()
+            cookie_header = self._build_cookie_header()
+            if cookie_header:
+                headers["Cookie"] = cookie_header
+
+            async with self.session.post(
+                API_USAGE_DETAIL, data=form_data, headers=headers
+            ) as resp:
+                text = await resp.text()
+                data = json.loads(text)
+                
+                # Try to extract phone number from viceCardlist
+                if data.get("shareData") and data["shareData"].get("details"):
+                    for item in data["shareData"]["details"]:
+                        vice_list = item.get("viceCardlist", [])
+                        if vice_list and len(vice_list) > 0:
+                            user_number = vice_list[0].get("usernumber", "")
+                            if user_number and len(user_number) >= 7:
+                                _LOGGER.info("Found phone number from usage detail API: %s", user_number)
+                                return user_number
+                
+                return None
+                    
+        except Exception as err:
+            _LOGGER.error("Failed to get phone number from usage detail API: %s", err)
+            return None
 
     async def get_balance_detail(self) -> dict[str, Any]:
         """Get balance detail from accountBalancenew API."""

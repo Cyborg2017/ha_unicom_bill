@@ -3,11 +3,11 @@
     "step": {
       "user": {
         "title": "话费查询集成",
-        "description": "配置联通话费信息集成。\n\n如何获取 OpenID：\n1. 使用微信开发者工具或抓包工具（Charles/Fiddler）\n2. 打开联通小程序\n3. 捕获网络请求\n4. 找到 getTicket 请求\n5. 从请求体中复制 openId 字段",
+        "description": "配置中国联通话费查询集成：\n\nOpenID 是微信用户的唯一标识，需要从联通小程序中获取：\n\n1. 安装抓包工具（Charles/Fiddler/Reqable）\n2. 安装并信任证书\n3. 打开【中国联通营业厅】小程序\n4. 捕获 HTTPS 请求\n5. 找到 `https://mina.10010.com/wxapplet/weixinNew/getTicket` 请求\n6. 从请求体中提取 `openId`",
         "data": {
           "openid": "OpenID",
           "refresh_interval": "刷新间隔（分钟）",
-          "create_individual_sensors": "创建独立传感器（语音总量、流量总量、总欠费等）"
+          "create_individual_sensors": "创建独立传感器（语音总量、流量总量等）"
         },
         "errors": {
           "openid_required": "OpenID 是必填项"
@@ -25,8 +25,65 @@
         "data": {
           "openid": "OpenID",
           "refresh_interval": "刷新间隔（分钟）",
-          "create_individual_sensors": "创建独立传感器"
+          "create_individual_sensors": "创建独立传感器（语音总量、流量总量等）"
         }
+      }
+    }
+  },
+  "device": {
+    "china_unicom": {
+      "name": "中国联通"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "voice_usage": {
+        "name": "已用语音"
+      },
+      "sms_usage": {
+        "name": "已用短信"
+      },
+      "data_usage": {
+        "name": "已用流量"
+      },
+      "balance": {
+        "name": "账户余额"
+      },
+      "voice_total": {
+        "name": "语音总量"
+      },
+      "voice_available": {
+        "name": "剩余语音"
+      },
+      "voice_ratio": {
+        "name": "语音使用比例"
+      },
+      "sms_total": {
+        "name": "短信总量"
+      },
+      "sms_available": {
+        "name": "剩余短信"
+      },
+      "data_total": {
+        "name": "流量总量"
+      },
+      "data_available": {
+        "name": "剩余流量"
+      },
+      "data_exceed": {
+        "name": "超支流量"
+      },
+      "data_ratio": {
+        "name": "流量使用比例"
+      },
+      "real_fee": {
+        "name": "本月话费"
+      },
+      "can_use_value": {
+        "name": "上月结余话费"
+      },
+      "total_owed": {
+        "name": "账户欠费"
       }
     }
   }

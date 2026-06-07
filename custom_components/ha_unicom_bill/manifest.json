@@ -1,6 +1,6 @@
 {
   "domain": "ha_unicom_bill",
-  "name": "中国联通话费查询",
+  "name": "China Unicom Bill",
   "codeowners": ["@Cyborg2017"],
   "config_flow": true,
   "documentation": "https://github.com/Cyborg2017/ha_unicom_bill",

@@ -13,7 +13,6 @@ from .const import (
     CONF_OPENID,
     CONF_REFRESH_INTERVAL,
     DEFAULT_CREATE_INDIVIDUAL_SENSORS,
-    DEFAULT_NAME,
     DEFAULT_REFRESH_INTERVAL,
     DOMAIN,
 )
@@ -38,7 +37,8 @@ class UnicomBillConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "openid_required"
             else:
                 return self.async_create_entry(
-                    title=DEFAULT_NAME, data=user_input
+                    title="China Unicom",
+                    data=user_input,
                 )
 
         data_schema = vol.Schema(
