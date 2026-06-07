@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "话费查询集成",
+        "description": "配置联通话费信息集成。\n\n如何获取 OpenID：\n1. 使用微信开发者工具或抓包工具（Charles/Fiddler）\n2. 打开联通小程序\n3. 捕获网络请求\n4. 找到 getTicket 请求\n5. 从请求体中复制 openId 字段",
+        "data": {
+          "openid": "OpenID",
+          "refresh_interval": "刷新间隔（分钟）",
+          "create_individual_sensors": "创建独立传感器（语音总量、流量总量、总欠费等）"
+        },
+        "errors": {
+          "openid_required": "OpenID 是必填项"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "该配置已存在"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "选项配置",
+        "data": {
+          "openid": "OpenID",
+          "refresh_interval": "刷新间隔（分钟）",
+          "create_individual_sensors": "创建独立传感器"
+        }
+      }
+    }
+  }
+}

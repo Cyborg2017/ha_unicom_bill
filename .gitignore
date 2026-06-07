@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+tox.ini
+
+# Home Assistant
+homeassistant.log
+OZW_Log.txt
+
+# HAR files (keep for development, but ignore in production)
+*.har
+
+# Test files
+test_*.py
+*_test.py
+
+# Documentation build
+docs/_build/
+
+# Temporary files
+*.tmp
+*.temp
