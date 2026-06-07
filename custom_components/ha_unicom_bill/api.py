@@ -304,7 +304,7 @@ class UnicomAPI:
                 
                 parsed: dict[str, Any] = {"data_items": []}
 
-                # Parse data items (elemType=3)
+                # Parse data items (elemType=3) from shareData
                 if data.get("shareData") and data["shareData"].get("details"):
                     share_data = data["shareData"]
                     details = share_data.get("details", [])
@@ -326,6 +326,37 @@ class UnicomAPI:
                                     "usedPercent": item.get("usedPercent"),
                                     "endDate": item.get("endDate"),
                                 })
+                else:
+                    _LOGGER.debug("No shareData or details found in API response")
+                
+                # Fallback: Try to parse data from resources if shareData has no data items
+                if not parsed["data_items"] and data.get("resources"):
+                    _LOGGER.debug("Trying fallback: parsing data from resources")
+                    resources = data.get("resources", [])
+                    if isinstance(resources, list):
+                        for group in resources:
+                            if not isinstance(group, dict):
+                                continue
+                            
+                            details = group.get("details", [])
+                            if not isinstance(details, list):
+                                continue
+                            
+                            for item in details:
+                                if not isinstance(item, dict):
+                                    continue
+                                
+                                # elemType=3 might also be in resources for some users
+                                if item.get("elemType") == "3":
+                                    parsed["data_items"].append({
+                                        "addUpItemName": item.get("addUpItemName"),
+                                        "use": item.get("use"),
+                                        "total": item.get("total"),
+                                        "remain": item.get("remain"),
+                                        "xexceedvalue": item.get("xexceedvalue"),
+                                        "usedPercent": item.get("usedPercent"),
+                                        "endDate": item.get("endDate"),
+                                    })
 
                 # Parse voice and SMS from resources
                 resources = data.get("resources", [])
@@ -375,6 +406,12 @@ class UnicomAPI:
                         bool(parsed.get("sms")),
                         len(parsed.get("data_items", [])),
                     )
+                    if not parsed.get("data_items"):
+                        _LOGGER.warning(
+                            "No data items found. shareData exists: %s, resources exists: %s",
+                            bool(data.get("shareData")),
+                            bool(data.get("resources"))
+                        )
                     return parsed
                 else:
                     _LOGGER.info("Usage detail returned no valid data")
