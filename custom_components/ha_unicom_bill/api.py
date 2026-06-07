@@ -306,23 +306,46 @@ class UnicomAPI:
 
                 # Parse data items (elemType=3)
                 if data.get("shareData") and data["shareData"].get("details"):
-                    for item in data["shareData"]["details"]:
-                        if item.get("elemType") == "3":
-                            parsed["data_items"].append({
-                                "addUpItemName": item.get("addUpItemName"),
-                                "use": item.get("use"),
-                                "total": item.get("total"),
-                                "remain": item.get("remain"),
-                                "xexceedvalue": item.get("xexceedvalue"),
-                                "usedPercent": item.get("usedPercent"),
-                                "endDate": item.get("endDate"),
-                            })
+                    share_data = data["shareData"]
+                    details = share_data.get("details", [])
+                    
+                    if isinstance(details, list):
+                        for item in details:
+                            # Skip if item is not a dict
+                            if not isinstance(item, dict):
+                                _LOGGER.debug("Skipping non-dict shareData item: %s", type(item).__name__)
+                                continue
+                            
+                            if item.get("elemType") == "3":
+                                parsed["data_items"].append({
+                                    "addUpItemName": item.get("addUpItemName"),
+                                    "use": item.get("use"),
+                                    "total": item.get("total"),
+                                    "remain": item.get("remain"),
+                                    "xexceedvalue": item.get("xexceedvalue"),
+                                    "usedPercent": item.get("usedPercent"),
+                                    "endDate": item.get("endDate"),
+                                })
 
                 # Parse voice and SMS from resources
                 resources = data.get("resources", [])
                 if isinstance(resources, list):
                     for group in resources:
-                        for item in group.get("details", []):
+                        # Skip if group is not a dict (some devices return int or other types)
+                        if not isinstance(group, dict):
+                            _LOGGER.debug("Skipping non-dict resource group: %s", type(group).__name__)
+                            continue
+                        
+                        details = group.get("details", [])
+                        if not isinstance(details, list):
+                            _LOGGER.debug("Skipping non-list details: %s", type(details).__name__)
+                            continue
+                        
+                        for item in details:
+                            if not isinstance(item, dict):
+                                _LOGGER.debug("Skipping non-dict item: %s", type(item).__name__)
+                                continue
+                            
                             elem_type = item.get("elemType")
                             if elem_type == "1":  # Voice
                                 parsed["voice"] = {
