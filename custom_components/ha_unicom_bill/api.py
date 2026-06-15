@@ -23,6 +23,16 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+def _safe_float(value: str | float | None) -> float:
+    """Safely convert a value to float, returning 0.0 on failure."""
+    if value is None:
+        return 0.0
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return 0.0
+
+
 class UnicomAPIError(Exception):
     """Base exception for Unicom API errors."""
 
@@ -325,6 +335,9 @@ class UnicomAPI:
                                     "xexceedvalue": item.get("xexceedvalue"),
                                     "usedPercent": item.get("usedPercent"),
                                     "endDate": item.get("endDate"),
+                                    "beforeTotal": item.get("beforeTotal"),
+                                    "beforeRemain": item.get("beforeRemain"),
+                                    "beforeUse": item.get("beforeUse"),
                                 })
                 else:
                     _LOGGER.debug("No shareData or details found in API response")
@@ -356,42 +369,102 @@ class UnicomAPI:
                                         "xexceedvalue": item.get("xexceedvalue"),
                                         "usedPercent": item.get("usedPercent"),
                                         "endDate": item.get("endDate"),
+                                        "beforeTotal": item.get("beforeTotal"),
+                                        "beforeRemain": item.get("beforeRemain"),
+                                        "beforeUse": item.get("beforeUse"),
                                     })
 
                 # Parse voice and SMS from resources
+                # Strategy: accumulate from details items first,
+                # then fall back to resource-group level (userResource/remainResource),
+                # finally use top-level aggregate fields.
                 resources = data.get("resources", [])
+                voice_items = []
+                sms_items = []
+                voice_group_remain = None
+                voice_group_use = None
+                sms_group_remain = None
+                sms_group_use = None
+
                 if isinstance(resources, list):
                     for group in resources:
                         # Skip if group is not a dict (some devices return int or other types)
                         if not isinstance(group, dict):
                             _LOGGER.debug("Skipping non-dict resource group: %s", type(group).__name__)
                             continue
-                        
+
+                        gtype = group.get("type", "")
+                        # Capture group-level aggregates for fallback
+                        if gtype == "Voice":
+                            try:
+                                voice_group_use = float(group.get("userResource", 0))
+                                voice_group_remain = float(group.get("remainResource", 0))
+                            except (ValueError, TypeError):
+                                pass
+                        elif gtype == "smsList":
+                            try:
+                                sms_group_use = float(group.get("userResource", 0))
+                                sms_group_remain = float(group.get("remainResource", 0))
+                            except (ValueError, TypeError):
+                                pass
+
                         details = group.get("details", [])
                         if not isinstance(details, list):
                             _LOGGER.debug("Skipping non-list details: %s", type(details).__name__)
                             continue
-                        
+
                         for item in details:
                             if not isinstance(item, dict):
                                 _LOGGER.debug("Skipping non-dict item: %s", type(item).__name__)
                                 continue
-                            
+
                             elem_type = item.get("elemType")
                             if elem_type == "1":  # Voice
-                                parsed["voice"] = {
-                                    "use": item.get("use"),
-                                    "total": item.get("total"),
-                                    "remain": item.get("remain"),
-                                    "usedPercent": item.get("usedPercent"),
-                                }
+                                voice_items.append(item)
                             elif elem_type == "2":  # SMS
-                                parsed["sms"] = {
-                                    "use": item.get("use"),
-                                    "total": item.get("total"),
-                                    "remain": item.get("remain"),
-                                    "usedPercent": item.get("usedPercent"),
-                                }
+                                sms_items.append(item)
+
+                # --- Build voice result ---
+                if voice_items:
+                    total_use = sum(_safe_float(i.get("use")) for i in voice_items)
+                    total_total = sum(_safe_float(i.get("total")) for i in voice_items)
+                    total_remain = sum(_safe_float(i.get("remain")) for i in voice_items)
+                    used_pct = round(total_use / total_total * 100) if total_total > 0 else 0
+                    parsed["voice"] = {
+                        "use": str(int(total_use)) if total_use == int(total_use) else str(total_use),
+                        "total": str(int(total_total)) if total_total == int(total_total) else str(total_total),
+                        "remain": str(int(total_remain)) if total_remain == int(total_remain) else str(total_remain),
+                        "usedPercent": str(used_pct),
+                    }
+                elif voice_group_use is not None:
+                    # Fallback: use resource-group level aggregates
+                    parsed["voice"] = {
+                        "use": str(int(voice_group_use)) if voice_group_use == int(voice_group_use) else str(voice_group_use),
+                        "total": str(int(voice_group_use + voice_group_remain)) if (voice_group_use + voice_group_remain) == int(voice_group_use + voice_group_remain) else str(voice_group_use + voice_group_remain),
+                        "remain": str(int(voice_group_remain)) if voice_group_remain == int(voice_group_remain) else str(voice_group_remain),
+                        "usedPercent": str(round(voice_group_use / (voice_group_use + voice_group_remain) * 100)) if (voice_group_use + voice_group_remain) > 0 else "0",
+                    }
+
+                # --- Build SMS result ---
+                if sms_items:
+                    total_use = sum(_safe_float(i.get("use")) for i in sms_items)
+                    total_total = sum(_safe_float(i.get("total")) for i in sms_items)
+                    total_remain = sum(_safe_float(i.get("remain")) for i in sms_items)
+                    used_pct = round(total_use / total_total * 100) if total_total > 0 else 0
+                    parsed["sms"] = {
+                        "use": str(int(total_use)) if total_use == int(total_use) else str(total_use),
+                        "total": str(int(total_total)) if total_total == int(total_total) else str(total_total),
+                        "remain": str(int(total_remain)) if total_remain == int(total_remain) else str(total_remain),
+                        "usedPercent": str(used_pct),
+                    }
+                elif sms_group_use is not None:
+                    # Fallback: use resource-group level aggregates
+                    parsed["sms"] = {
+                        "use": str(int(sms_group_use)) if sms_group_use == int(sms_group_use) else str(sms_group_use),
+                        "total": str(int(sms_group_use + sms_group_remain)) if (sms_group_use + sms_group_remain) == int(sms_group_use + sms_group_remain) else str(sms_group_use + sms_group_remain),
+                        "remain": str(int(sms_group_remain)) if sms_group_remain == int(sms_group_remain) else str(sms_group_remain),
+                        "usedPercent": "0",
+                    }
 
                 has_data = (
                     bool(parsed.get("data_items"))
