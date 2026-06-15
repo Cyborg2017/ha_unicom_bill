@@ -338,6 +338,7 @@ class UnicomAPI:
                                     "beforeTotal": item.get("beforeTotal"),
                                     "beforeRemain": item.get("beforeRemain"),
                                     "beforeUse": item.get("beforeUse"),
+                                    "flowType": item.get("flowType"),
                                 })
                 else:
                     _LOGGER.debug("No shareData or details found in API response")
@@ -372,6 +373,7 @@ class UnicomAPI:
                                         "beforeTotal": item.get("beforeTotal"),
                                         "beforeRemain": item.get("beforeRemain"),
                                         "beforeUse": item.get("beforeUse"),
+                                        "flowType": item.get("flowType"),
                                     })
 
                 # Parse voice and SMS from resources

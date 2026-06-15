@@ -44,7 +44,7 @@
         "name": "已用短信"
       },
       "data_usage": {
-        "name": "已用流量"
+        "name": "已用流量(合计)"
       },
       "balance": {
         "name": "账户余额"
@@ -58,6 +58,9 @@
       "voice_ratio": {
         "name": "语音使用比例"
       },
+      "sms_ratio": {
+        "name": "短信使用比例"
+      },
       "sms_total": {
         "name": "短信总量"
       },
@@ -65,10 +68,10 @@
         "name": "剩余短信"
       },
       "data_total": {
-        "name": "流量总量"
+        "name": "流量总量(合计)"
       },
       "data_available": {
-        "name": "剩余流量"
+        "name": "剩余流量(合计)"
       },
       "data_exceed": {
         "name": "超支流量"
@@ -78,6 +81,33 @@
       },
       "data_carried_over": {
         "name": "上月转接流量"
+      },
+      "data_total_general": {
+        "name": "流量总量(通用)"
+      },
+      "data_available_general": {
+        "name": "剩余流量(通用)"
+      },
+      "data_usage_general": {
+        "name": "已用流量(通用)"
+      },
+      "data_total_exclusive": {
+        "name": "流量总量(专属)"
+      },
+      "data_available_exclusive": {
+        "name": "剩余流量(专属)"
+      },
+      "data_usage_exclusive": {
+        "name": "已用流量(专属)"
+      },
+      "data_total_other": {
+        "name": "流量总量(其他)"
+      },
+      "data_available_other": {
+        "name": "剩余流量(其他)"
+      },
+      "data_usage_other": {
+        "name": "已用流量(其他)"
       },
       "real_fee": {
         "name": "本月话费"

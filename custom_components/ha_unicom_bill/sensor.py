@@ -101,7 +101,7 @@ BASIC_SENSOR_DESCRIPTIONS: list[UnicomSensorEntityDescription] = [
         icon="mdi:cellphone-link",
         value_fn=lambda data: (
             round(
-                sum(_parse_mb(item.get("use")) for item in data.get("usage_details", {}).get("data_items", [])) / 1024,
+                sum(_parse_mb(item.get("use")) for item in data.get("usage_details", {}).get("data_items", []) if float(item.get("total") or 0) > 0) / 1024,
                 2
             ) if data.get("usage_details", {}).get("data_items") else None
         ),
@@ -173,6 +173,18 @@ DETAILED_SENSOR_DESCRIPTIONS: list[UnicomSensorEntityDescription] = [
         ),
     ),
     UnicomSensorEntityDescription(
+        key="sms_ratio",
+        translation_key="sms_ratio",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="%",
+        icon="mdi:percent",
+        value_fn=lambda data: (
+            round(float(data.get("usage_details", {}).get("sms", {}).get("usedPercent", 0)), 2)
+            if data.get("usage_details", {}).get("sms")
+            else None
+        ),
+    ),
+    UnicomSensorEntityDescription(
         key="sms_total",
         translation_key="sms_total",
         state_class=SensorStateClass.TOTAL,
@@ -205,7 +217,7 @@ DETAILED_SENSOR_DESCRIPTIONS: list[UnicomSensorEntityDescription] = [
         icon="mdi:database",
         value_fn=lambda data: (
             round(
-                sum(_parse_mb(item.get("total")) for item in data.get("usage_details", {}).get("data_items", [])) / 1024,
+                sum(_parse_mb(item.get("total")) for item in data.get("usage_details", {}).get("data_items", []) if float(item.get("total") or 0) > 0) / 1024,
                 2
             ) if data.get("usage_details", {}).get("data_items") else None
         ),
@@ -219,7 +231,7 @@ DETAILED_SENSOR_DESCRIPTIONS: list[UnicomSensorEntityDescription] = [
         icon="mdi:database-check",
         value_fn=lambda data: (
             round(
-                sum(_parse_mb(item.get("remain")) for item in data.get("usage_details", {}).get("data_items", []) if item.get("remain")) / 1024,
+                sum(_parse_mb(item.get("remain")) for item in data.get("usage_details", {}).get("data_items", []) if float(item.get("total") or 0) > 0 and item.get("remain")) / 1024,
                 2
             ) if data.get("usage_details", {}).get("data_items") else None
         ),
@@ -262,6 +274,136 @@ DETAILED_SENSOR_DESCRIPTIONS: list[UnicomSensorEntityDescription] = [
             ) if data.get("usage_details", {}).get("data_items") else None
         ),
         attributes_fn=lambda data: _build_carried_over_attributes(data) if data.get("usage_details", {}).get("data_items") else {},
+    ),
+    # --- General (通用) flow sensors ---
+    UnicomSensorEntityDescription(
+        key="data_total_general",
+        translation_key="data_total_general",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        icon="mdi:database",
+        value_fn=lambda data: (
+            round(
+                sum(_parse_mb(item.get("total")) for item in data.get("usage_details", {}).get("data_items", []) if item.get("flowType") == "1") / 1024,
+                2
+            ) if data.get("usage_details", {}).get("data_items") else None
+        ),
+    ),
+    UnicomSensorEntityDescription(
+        key="data_available_general",
+        translation_key="data_available_general",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        icon="mdi:database-check",
+        value_fn=lambda data: (
+            round(
+                sum(_parse_mb(item.get("remain")) for item in data.get("usage_details", {}).get("data_items", []) if item.get("flowType") == "1" and item.get("remain")) / 1024,
+                2
+            ) if data.get("usage_details", {}).get("data_items") else None
+        ),
+    ),
+    UnicomSensorEntityDescription(
+        key="data_usage_general",
+        translation_key="data_usage_general",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        icon="mdi:cellphone-link",
+        value_fn=lambda data: (
+            round(
+                sum(_parse_mb(item.get("use")) for item in data.get("usage_details", {}).get("data_items", []) if item.get("flowType") == "1") / 1024,
+                2
+            ) if data.get("usage_details", {}).get("data_items") else None
+        ),
+    ),
+    # --- Exclusive (专属/App) flow sensors (flowType=2) ---
+    # Note: items with total=0 are unlimited type — skip entirely
+    UnicomSensorEntityDescription(
+        key="data_total_exclusive",
+        translation_key="data_total_exclusive",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        icon="mdi:database",
+        value_fn=lambda data: (
+            round(
+                sum(_parse_mb(item.get("total")) for item in data.get("usage_details", {}).get("data_items", []) if item.get("flowType") == "2" and float(item.get("total") or 0) > 0) / 1024,
+                2
+            ) if data.get("usage_details", {}).get("data_items") else None
+        ),
+    ),
+    UnicomSensorEntityDescription(
+        key="data_available_exclusive",
+        translation_key="data_available_exclusive",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        icon="mdi:database-check",
+        value_fn=lambda data: (
+            round(
+                sum(_parse_mb(item.get("remain")) for item in data.get("usage_details", {}).get("data_items", []) if item.get("flowType") == "2" and float(item.get("total") or 0) > 0 and item.get("remain")) / 1024,
+                2
+            ) if data.get("usage_details", {}).get("data_items") else None
+        ),
+    ),
+    UnicomSensorEntityDescription(
+        key="data_usage_exclusive",
+        translation_key="data_usage_exclusive",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        icon="mdi:cellphone-link",
+        value_fn=lambda data: (
+            round(
+                sum(_parse_mb(item.get("use")) for item in data.get("usage_details", {}).get("data_items", []) if item.get("flowType") == "2" and float(item.get("total") or 0) > 0) / 1024,
+                2
+            ) if data.get("usage_details", {}).get("data_items") else None
+        ),
+    ),
+    # --- Other (区域/公免) flow sensors (flowType=3) ---
+    UnicomSensorEntityDescription(
+        key="data_total_other",
+        translation_key="data_total_other",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        icon="mdi:database",
+        value_fn=lambda data: (
+            round(
+                sum(_parse_mb(item.get("total")) for item in data.get("usage_details", {}).get("data_items", []) if item.get("flowType") == "3") / 1024,
+                2
+            ) if data.get("usage_details", {}).get("data_items") else None
+        ),
+    ),
+    UnicomSensorEntityDescription(
+        key="data_available_other",
+        translation_key="data_available_other",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        icon="mdi:database-check",
+        value_fn=lambda data: (
+            round(
+                sum(_parse_mb(item.get("remain")) for item in data.get("usage_details", {}).get("data_items", []) if item.get("flowType") == "3" and item.get("remain")) / 1024,
+                2
+            ) if data.get("usage_details", {}).get("data_items") else None
+        ),
+    ),
+    UnicomSensorEntityDescription(
+        key="data_usage_other",
+        translation_key="data_usage_other",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        icon="mdi:cellphone-link",
+        value_fn=lambda data: (
+            round(
+                sum(_parse_mb(item.get("use")) for item in data.get("usage_details", {}).get("data_items", []) if item.get("flowType") == "3") / 1024,
+                2
+            ) if data.get("usage_details", {}).get("data_items") else None
+        ),
     ),
     UnicomSensorEntityDescription(
         key="real_fee",
@@ -313,11 +455,14 @@ def _build_data_attributes(data: dict) -> dict[str, Any]:
     data_items = usage.get("data_items", [])
     if not data_items:
         return {}
-    
-    total_use_mb = sum(_parse_mb(item.get("use")) for item in data_items)
-    total_total_mb = sum(_parse_mb(item.get("total")) for item in data_items)
-    total_remain_mb = sum(_parse_mb(item.get("remain")) for item in data_items if item.get("remain"))
-    total_exceed_mb = sum(_parse_mb(item.get("xexceedvalue")) for item in data_items if item.get("xexceedvalue"))
+
+    # Filter out unlimited items (total=0)
+    valid_items = [item for item in data_items if float(item.get("total") or 0) > 0]
+
+    total_use_mb = sum(_parse_mb(item.get("use")) for item in valid_items)
+    total_total_mb = sum(_parse_mb(item.get("total")) for item in valid_items)
+    total_remain_mb = sum(_parse_mb(item.get("remain")) for item in valid_items if item.get("remain"))
+    total_exceed_mb = sum(_parse_mb(item.get("xexceedvalue")) for item in valid_items if item.get("xexceedvalue"))
     # 上月转接总量
     carried_over_mb = sum(_parse_mb(item.get("beforeTotal")) for item in data_items if item.get("beforeTotal"))
     ratio = round(total_use_mb / total_total_mb * 100, 2) if total_total_mb > 0 else 0
@@ -328,7 +473,7 @@ def _build_data_attributes(data: dict) -> dict[str, Any]:
         "available": f"{_mb_to_display(total_remain_mb)[0]} {_mb_to_display(total_remain_mb)[1]}",
         "exceeded": f"{_mb_to_display(total_exceed_mb)[0]} {_mb_to_display(total_exceed_mb)[1]}",
         "usage_ratio": f"{ratio}%",
-        "package_count": len(data_items),
+        "package_count": len(valid_items),
     }
     if carried_over_mb > 0:
         attrs["carried_over"] = f"{_mb_to_display(carried_over_mb)[0]} {_mb_to_display(carried_over_mb)[1]}"
@@ -374,10 +519,11 @@ def _calc_data_ratio(data: dict) -> float | None:
     data_items = usage.get("data_items", [])
     if not data_items:
         return None
-    
-    total_use_mb = sum(_parse_mb(item.get("use")) for item in data_items)
-    total_total_mb = sum(_parse_mb(item.get("total")) for item in data_items)
-    
+
+    valid_items = [item for item in data_items if float(item.get("total") or 0) > 0]
+    total_use_mb = sum(_parse_mb(item.get("use")) for item in valid_items)
+    total_total_mb = sum(_parse_mb(item.get("total")) for item in valid_items)
+
     return round(total_use_mb / total_total_mb * 100, 2) if total_total_mb > 0 else 0
 
 
