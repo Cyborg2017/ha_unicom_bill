@@ -79,6 +79,7 @@ BASIC_SENSOR_DESCRIPTIONS: list[UnicomSensorEntityDescription] = [
         key="sms_usage",
         translation_key="sms_usage",
         state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement="条",
         icon="mdi:message-text",
         value_fn=lambda data: (
             int(float(data.get("usage_details", {}).get("sms", {}).get("use", 0)))
@@ -175,6 +176,7 @@ DETAILED_SENSOR_DESCRIPTIONS: list[UnicomSensorEntityDescription] = [
         key="sms_total",
         translation_key="sms_total",
         state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement="条",
         icon="mdi:message-text",
         value_fn=lambda data: (
             int(float(data.get("usage_details", {}).get("sms", {}).get("total", 0)))
@@ -186,6 +188,7 @@ DETAILED_SENSOR_DESCRIPTIONS: list[UnicomSensorEntityDescription] = [
         key="sms_available",
         translation_key="sms_available",
         state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement="条",
         icon="mdi:message-check",
         value_fn=lambda data: (
             int(float(data.get("usage_details", {}).get("sms", {}).get("remain", 0)))
