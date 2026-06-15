@@ -76,6 +76,9 @@
       "data_ratio": {
         "name": "流量使用比例"
       },
+      "data_carried_over": {
+        "name": "上月转接流量"
+      },
       "real_fee": {
         "name": "本月话费"
       },

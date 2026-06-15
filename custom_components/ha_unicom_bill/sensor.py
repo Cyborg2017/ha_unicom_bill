@@ -246,6 +246,21 @@ DETAILED_SENSOR_DESCRIPTIONS: list[UnicomSensorEntityDescription] = [
         ),
     ),
     UnicomSensorEntityDescription(
+        key="data_carried_over",
+        translation_key="data_carried_over",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        icon="mdi:arrow-left-bold",
+        value_fn=lambda data: (
+            round(
+                sum(_parse_mb(item.get("beforeTotal")) for item in data.get("usage_details", {}).get("data_items", []) if item.get("beforeTotal")) / 1024,
+                2
+            ) if data.get("usage_details", {}).get("data_items") else None
+        ),
+        attributes_fn=lambda data: _build_carried_over_attributes(data) if data.get("usage_details", {}).get("data_items") else {},
+    ),
+    UnicomSensorEntityDescription(
         key="real_fee",
         translation_key="real_fee",
         device_class=SensorDeviceClass.MONETARY,
@@ -300,15 +315,53 @@ def _build_data_attributes(data: dict) -> dict[str, Any]:
     total_total_mb = sum(_parse_mb(item.get("total")) for item in data_items)
     total_remain_mb = sum(_parse_mb(item.get("remain")) for item in data_items if item.get("remain"))
     total_exceed_mb = sum(_parse_mb(item.get("xexceedvalue")) for item in data_items if item.get("xexceedvalue"))
+    # 上月转接总量
+    carried_over_mb = sum(_parse_mb(item.get("beforeTotal")) for item in data_items if item.get("beforeTotal"))
     ratio = round(total_use_mb / total_total_mb * 100, 2) if total_total_mb > 0 else 0
-    
-    return {
+
+    attrs: dict[str, Any] = {
         "used": f"{_mb_to_display(total_use_mb)[0]} {_mb_to_display(total_use_mb)[1]}",
         "total": f"{_mb_to_display(total_total_mb)[0]} {_mb_to_display(total_total_mb)[1]}",
         "available": f"{_mb_to_display(total_remain_mb)[0]} {_mb_to_display(total_remain_mb)[1]}",
         "exceeded": f"{_mb_to_display(total_exceed_mb)[0]} {_mb_to_display(total_exceed_mb)[1]}",
         "usage_ratio": f"{ratio}%",
         "package_count": len(data_items),
+    }
+    if carried_over_mb > 0:
+        attrs["carried_over"] = f"{_mb_to_display(carried_over_mb)[0]} {_mb_to_display(carried_over_mb)[1]}"
+
+    # Include summary from API if available
+    summary = usage.get("summary", {})
+    if summary:
+        if summary.get("can_use_flow_all") is not None:
+            attrs["can_use_flow_all"] = summary["can_use_flow_all"]
+        if summary.get("all_user_flow") is not None:
+            attrs["all_user_flow"] = summary["all_user_flow"]
+
+    return attrs
+
+
+def _build_carried_over_attributes(data: dict) -> dict[str, Any]:
+    """Build carried-over (上月转接) flow attributes."""
+    usage = data.get("usage_details", {})
+    data_items = usage.get("data_items", [])
+    items_with_carry = [
+        {
+            "name": item.get("addUpItemName", ""),
+            "before_total": item.get("beforeTotal"),
+            "before_remain": item.get("beforeRemain"),
+            "before_use": item.get("beforeUse"),
+            "fee_policy": item.get("feePolicyName", ""),
+        }
+        for item in data_items
+        if item.get("beforeTotal")
+    ]
+
+    total_carried_mb = sum(_parse_mb(i["before_total"]) for i in items_with_carry)
+    return {
+        "total": f"{_mb_to_display(total_carried_mb)[0]} {_mb_to_display(total_carried_mb)[1]}" if total_carried_mb else "0 MB",
+        "items": items_with_carry,
+        "item_count": len(items_with_carry),
     }
 
 
