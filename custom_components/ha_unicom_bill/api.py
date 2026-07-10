@@ -314,8 +314,40 @@ class UnicomAPI:
                 
                 parsed: dict[str, Any] = {"data_items": []}
 
-                # Parse data items (elemType=3) from shareData
-                if data.get("shareData") and data["shareData"].get("details"):
+                # Parse data items (elemType=3) from unshared (NEW: primary source)
+                if data.get("unshared") and isinstance(data["unshared"], list):
+                    for group in data["unshared"]:
+                        if not isinstance(group, dict):
+                            continue
+                        
+                        details = group.get("details", [])
+                        if not isinstance(details, list):
+                            continue
+                        
+                        group_type = group.get("type", "")
+                        
+                        for item in details:
+                            if not isinstance(item, dict):
+                                continue
+                            
+                            elem_type = item.get("elemType")
+                            if elem_type == "3":  # Data
+                                parsed["data_items"].append({
+                                    "addUpItemName": item.get("addUpItemName"),
+                                    "use": item.get("use"),
+                                    "total": item.get("total"),
+                                    "remain": item.get("remain"),
+                                    "xexceedvalue": item.get("xexceedvalue"),
+                                    "usedPercent": item.get("usedPercent"),
+                                    "endDate": item.get("endDate"),
+                                    "beforeTotal": item.get("beforeTotal"),
+                                    "beforeRemain": item.get("beforeRemain"),
+                                    "beforeUse": item.get("beforeUse"),
+                                    "flowType": item.get("flowType"),
+                                })
+                
+                # Fallback: Parse data items from shareData
+                if not parsed["data_items"] and data.get("shareData") and data["shareData"].get("details"):
                     share_data = data["shareData"]
                     details = share_data.get("details", [])
                     
@@ -340,10 +372,8 @@ class UnicomAPI:
                                     "beforeUse": item.get("beforeUse"),
                                     "flowType": item.get("flowType"),
                                 })
-                else:
-                    _LOGGER.debug("No shareData or details found in API response")
                 
-                # Fallback: Try to parse data from resources if shareData has no data items
+                # Fallback: Try to parse data from resources if still no data items
                 if not parsed["data_items"] and data.get("resources"):
                     _LOGGER.debug("Trying fallback: parsing data from resources")
                     resources = data.get("resources", [])
@@ -376,11 +406,10 @@ class UnicomAPI:
                                         "flowType": item.get("flowType"),
                                     })
 
-                # Parse voice and SMS from resources
+                # Parse voice and SMS from unshared (NEW: primary source) and resources
                 # Strategy: accumulate from details items first,
                 # then fall back to resource-group level (userResource/remainResource),
                 # finally use top-level aggregate fields.
-                resources = data.get("resources", [])
                 voice_items = []
                 sms_items = []
                 voice_group_remain = None
@@ -388,6 +417,44 @@ class UnicomAPI:
                 sms_group_remain = None
                 sms_group_use = None
 
+                # NEW: Parse from unshared first
+                if data.get("unshared") and isinstance(data["unshared"], list):
+                    for group in data["unshared"]:
+                        if not isinstance(group, dict):
+                            continue
+                        
+                        details = group.get("details", [])
+                        if not isinstance(details, list):
+                            continue
+                        
+                        # Capture group-level aggregates
+                        group_type = group.get("type", "")
+                        if group_type == "unsharedVoiceList":
+                            try:
+                                voice_group_use = float(group.get("userResource", 0))
+                                voice_group_remain = float(group.get("remainResource", 0))
+                            except (ValueError, TypeError):
+                                pass
+                        elif group_type == "unsharedSmsList":
+                            try:
+                                sms_group_use = float(group.get("userResource", 0))
+                                sms_group_remain = float(group.get("remainResource", 0))
+                            except (ValueError, TypeError):
+                                pass
+                        
+                        # Parse individual items
+                        for item in details:
+                            if not isinstance(item, dict):
+                                continue
+                            
+                            elem_type = item.get("elemType")
+                            if elem_type == "1":  # Voice
+                                voice_items.append(item)
+                            elif elem_type == "2":  # SMS
+                                sms_items.append(item)
+
+                # Fallback: Parse from resources
+                resources = data.get("resources", [])
                 if isinstance(resources, list):
                     for group in resources:
                         # Skip if group is not a dict (some devices return int or other types)
@@ -476,17 +543,14 @@ class UnicomAPI:
                 
                 if has_data:
                     _LOGGER.debug(
-                        "Usage detail fetched: voice=%s, sms=%s, data=%d items",
+                        "Usage detail fetched: voice=%s, sms=%s, data=%d items (from unshared=%s, shareData=%s, resources=%s)",
                         bool(parsed.get("voice")),
                         bool(parsed.get("sms")),
                         len(parsed.get("data_items", [])),
+                        bool(data.get("unshared")),
+                        bool(data.get("shareData")),
+                        bool(data.get("resources"))
                     )
-                    if not parsed.get("data_items"):
-                        _LOGGER.warning(
-                            "No data items found. shareData exists: %s, resources exists: %s",
-                            bool(data.get("shareData")),
-                            bool(data.get("resources"))
-                        )
                     return parsed
                 else:
                     _LOGGER.info("Usage detail returned no valid data")
