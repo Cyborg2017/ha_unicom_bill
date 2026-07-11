@@ -406,7 +406,7 @@ class UnicomAPI:
                                         "flowType": item.get("flowType"),
                                     })
 
-                # Parse voice and SMS from unshared (NEW: primary source) and resources
+                # Parse voice and SMS from resources
                 # Strategy: accumulate from details items first,
                 # then fall back to resource-group level (userResource/remainResource),
                 # finally use top-level aggregate fields.
@@ -417,43 +417,6 @@ class UnicomAPI:
                 sms_group_remain = None
                 sms_group_use = None
 
-                # NEW: Parse from unshared first
-                if data.get("unshared") and isinstance(data["unshared"], list):
-                    for group in data["unshared"]:
-                        if not isinstance(group, dict):
-                            continue
-                        
-                        details = group.get("details", [])
-                        if not isinstance(details, list):
-                            continue
-                        
-                        # Capture group-level aggregates
-                        group_type = group.get("type", "")
-                        if group_type == "unsharedVoiceList":
-                            try:
-                                voice_group_use = float(group.get("userResource", 0))
-                                voice_group_remain = float(group.get("remainResource", 0))
-                            except (ValueError, TypeError):
-                                pass
-                        elif group_type == "unsharedSmsList":
-                            try:
-                                sms_group_use = float(group.get("userResource", 0))
-                                sms_group_remain = float(group.get("remainResource", 0))
-                            except (ValueError, TypeError):
-                                pass
-                        
-                        # Parse individual items
-                        for item in details:
-                            if not isinstance(item, dict):
-                                continue
-                            
-                            elem_type = item.get("elemType")
-                            if elem_type == "1":  # Voice
-                                voice_items.append(item)
-                            elif elem_type == "2":  # SMS
-                                sms_items.append(item)
-
-                # Fallback: Parse from resources
                 resources = data.get("resources", [])
                 if isinstance(resources, list):
                     for group in resources:
