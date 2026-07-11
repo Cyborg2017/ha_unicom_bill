@@ -7,5 +7,5 @@
   "issue_tracker": "https://github.com/Cyborg2017/ha_unicom_bill/issues",
   "iot_class": "cloud_polling",
   "requirements": ["aiohttp>=3.8.1", "async_timeout>=4.0.0"],
-  "version": "26.6.3"
+  "version": "26.7.0"
 }
