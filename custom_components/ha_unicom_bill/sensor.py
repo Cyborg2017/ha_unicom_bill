@@ -413,9 +413,8 @@ DETAILED_SENSOR_DESCRIPTIONS: list[UnicomSensorEntityDescription] = [
         native_unit_of_measurement="CNY",
         icon="mdi:currency-cny",
         value_fn=lambda data: (
-            float(data.get("balance_detail", {}).get("totalrealfee", 
-                   data.get("balance_detail", {}).get("realfeecustnew", 0)))
-            if data.get("balance_detail")
+            float(data.get("bill_detail", {}).get("realPayFee", 0))
+            if data.get("bill_detail")
             else None
         ),
     ),

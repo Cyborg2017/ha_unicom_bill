@@ -11,6 +11,7 @@ from aiohttp import ClientSession
 
 from .const import (
     API_BALANCE_DETAIL,
+    API_BILL_DETAIL,
     API_GET_TICKET,
     API_QUERY_GOODS_LIST,
     API_SERVICE_ENTRANCE,
@@ -282,6 +283,54 @@ class UnicomAPI:
             _LOGGER.error("Failed to get balance detail: %s", err)
             raise UnicomAPIError(f"Balance API error: {err}") from err
 
+    async def get_bill_detail(self) -> dict[str, Any]:
+        """Get bill detail from queryDetail API."""
+        try:
+            effective_ticket = self._manual_balance_ticket or self._auto_ticket
+            effective_phone = self._manual_balance_ticket_phone or self._auto_ticket_phone
+            
+            # Get current month in format YYYYMM
+            current_month = time.strftime("%Y%m")
+            
+            form_data = {
+                "duanlianjieabc": "",
+                "channelCode": "",
+                "serviceType": "",
+                "saleChannel": "",
+                "externalSources": "",
+                "contactCode": "",
+                "ticket": effective_ticket,
+                "ticketPhone": effective_phone,
+                "ticketChannel": "XCXSYHF",
+                "month": current_month,
+            }
+            
+            headers = HEADERS_FORM.copy()
+            cookie_header = self._build_cookie_header()
+            if cookie_header:
+                headers["Cookie"] = cookie_header
+
+            async with self.session.post(
+                API_BILL_DETAIL, data=form_data, headers=headers
+            ) as resp:
+                text = await resp.text()
+                data = json.loads(text)
+                
+                if data.get("code") == "0000":
+                    _LOGGER.debug("Bill detail fetched successfully")
+                    return data.get("data", {})
+                else:
+                    _LOGGER.info(
+                        "Bill detail error code=%s: %s",
+                        data.get("code"),
+                        data.get("desc", ""),
+                    )
+                    return {}
+                    
+        except Exception as err:
+            _LOGGER.error("Failed to get bill detail: %s", err)
+            raise UnicomAPIError(f"Bill API error: {err}") from err
+
     async def get_usage_detail(self) -> dict[str, Any]:
         """Get usage detail from queryOcsPackageFlow API."""
         try:
@@ -529,6 +578,7 @@ class UnicomAPI:
             "overview": {},
             "usage_details": {},
             "balance_detail": {},
+            "bill_detail": {},
         }
 
         try:
@@ -545,7 +595,12 @@ class UnicomAPI:
             if balance:
                 result["balance_detail"] = balance
 
-            # Step 3: Get usage detail
+            # Step 3: Get bill detail
+            bill = await self.get_bill_detail()
+            if bill:
+                result["bill_detail"] = bill
+
+            # Step 4: Get usage detail
             usage = await self.get_usage_detail()
             if usage:
                 result["usage_details"] = usage

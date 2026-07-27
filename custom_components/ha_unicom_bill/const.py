@@ -36,6 +36,10 @@ API_BALANCE_DETAIL = (
     "https://mxx.client.10010.com/servicequerybusiness"
     "/balancenew/accountBalancenew.htm"
 )
+API_BILL_DETAIL = (
+    "https://m.client.10010.com/serviceimportantbusiness"
+    "/phoneBillNew/queryDetail"
+)
 API_GET_TICKET = "https://mina.10010.com/wxapplet/weixinNew/getTicket"
 API_SERVICE_ENTRANCE = "https://mxx.client.10010.com/servicebusiness/wx/serviceEntrance"
 API_QUERY_GOODS_LIST = "https://mina.10010.com/wxapplet/weixinNew/queryGoodsList"
