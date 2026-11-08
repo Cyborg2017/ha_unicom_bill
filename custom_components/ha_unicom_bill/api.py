@@ -19,6 +19,7 @@ from .const import (
     API_USAGE_DETAIL,
     HEADERS_FORM,
     HEADERS_JSON,
+    WX_USER_AGENT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -121,7 +122,17 @@ class UnicomAPI:
                     f"&servicecode=YH10007"
                     f"&ticketChannel=XCXSYHF"
                 )
-                async with self.session.get(entrance_url) as entrance_resp:
+                # 该接口返回 302，microHallUser 挂在 302 的 Set-Cookie 上。
+                # aiohttp 默认跟随跳转到 imgxx 的 H5 页，最终响应没有 Set-Cookie，
+                # 于是 Cookie 恒为空、queryDetail 缺会话报 0002/0004。必须关掉跳转。
+                # 注意：servicecode 与 ticketChannel 必须成对
+                #   (YH10007, XCXSYHF) 余额页 或 (YH10003, XCXLSZD) 账单页，
+                # 混搭会让入口返回 errPage(ECS000042) 且不下发 Cookie。
+                async with self.session.get(
+                    entrance_url,
+                    headers={"User-Agent": WX_USER_AGENT},
+                    allow_redirects=False,
+                ) as entrance_resp:
                     for cookie_str in entrance_resp.headers.getall("Set-Cookie", []):
                         if "microHallUser=" in cookie_str:
                             self._micro_hall_user = (
@@ -139,7 +150,10 @@ class UnicomAPI:
                     if self._micro_hall_user:
                         _LOGGER.debug("serviceEntrance success, got microHall Cookie")
                     else:
-                        _LOGGER.info("serviceEntrance returned no Cookie")
+                        _LOGGER.info(
+                            "serviceEntrance returned no Cookie (HTTP %s)",
+                            entrance_resp.status,
+                        )
                         
             except Exception as err:
                 _LOGGER.info("serviceEntrance failed (%s): %s", type(err).__name__, err)
@@ -269,14 +283,18 @@ class UnicomAPI:
                 data = json.loads(text)
                 
                 if data.get("code") == "0000":
+                    body = data.get("data", data)
+                    if isinstance(body, dict):
+                        _LOGGER.debug("Balance detail keys: %s", sorted(body))
                     _LOGGER.debug("Balance detail fetched successfully")
-                    return data.get("data", data)
+                    return body
                 else:
                     _LOGGER.info(
                         "Balance detail error code=%s: %s",
                         data.get("code"),
                         data.get("msg", ""),
                     )
+                    _LOGGER.debug("Balance detail raw=%s", text[:1000])
                     return {}
                     
         except Exception as err:
@@ -325,6 +343,7 @@ class UnicomAPI:
                         data.get("code"),
                         data.get("desc", ""),
                     )
+                    _LOGGER.debug("Bill detail raw=%s", text[:1000])
                     return {}
                     
         except Exception as err:

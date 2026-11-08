@@ -43,10 +43,11 @@ class UnicomBillCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 raise UpdateFailed("No data received from API")
                 
             _LOGGER.info(
-                "Data updated successfully: overview=%s, usage=%s, balance=%s",
+                "Data updated successfully: overview=%s, usage=%s, balance=%s, bill=%s",
                 bool(data.get("overview")),
                 bool(data.get("usage_details")),
                 bool(data.get("balance_detail")),
+                bool(data.get("bill_detail")),
             )
             
             return data

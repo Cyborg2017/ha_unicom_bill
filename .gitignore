@@ -60,3 +60,9 @@ docs/_build/
 # Temporary files
 *.tmp
 *.temp
+
+# debug folder
+debug/
+
+# local workspace state (Agent session memory & work logs)
+.workbuddy/
